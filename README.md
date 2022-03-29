@@ -1,5 +1,6 @@
 # strava
 
+This example is meant to work alongside your Deephaven IDE. Please see our [QuickStart Guide]](https://deephaven.io/core/docs/tutorials/quickstart/). 
 
 Maybe you're training for a race or simply maintaining an exercise routine. Personally, I consistently use my fitness watch to ensure I'm meeting my step goals and to track my progress as I try to shave a few seconds off my mile time. The free [Strava](https://www.strava.com) app beloved by runners and cyclists is another great resource to motivate you in your fitness journey and connect with a community. You can track a variety of exercises and store your results in the app. Did you know you can also download this data as .fit files?
 
@@ -17,11 +18,10 @@ First, pull your own data from your [Strava](https://www.strava.com/) account.
 2. Select an activity.
 3. At the bottom of the menu, select **...** for more.
 4. Select **Export Original**. Provided you have supplied the data in FIT format, this should now provide a file to download with the `.fit` extension.
-5. Put this `.fit` file in the data folder underneath your Docker starting location. You might also want to create a new folder to organize the data. Ours is in `data/examples/Fit`.
+5. Put this `.fit` file in the data folder underneath your Docker starting location. You might also want to create a new folder to organize the data. Ours is in `data/Fit`.
 
 ## Import your data
 
-When launching Deephaven with example data you'll have access to an example `.fit` file in the data directory. To see your data at work, use the files you placed in the `data/examples` folder.
 
 @dtcooper wrote a really cool Python script to read the FIT binary file format. To install that script, run this code inside the IDE:
 
@@ -35,7 +35,7 @@ To read the FIT file into Deephaven, specify the file path, making sure to inclu
 ```python test-set=1
 from fitparse import FitFile
 
-fitfile = FitFile('/data/examples/Fit/ThursMorn.fit')
+fitfile = FitFile('/data/Fit/ThursMorn.fit')
 ```
 
 Like most data work, the hard part is cleaning and formatting the data. At the time of writing, this FIT file worked, but in the event Strava alters the format, I left comments on my debugging so you can see how you might want to change things if and when Strava makes changes. I put the rest of the script below to copy and paste into your IDE.
@@ -53,7 +53,7 @@ except ImportError:
     from fitparse import FitFile
 
 # Change to the name of the downloaded file (including any intermediate directory added to docker)
-fitfile = FitFile('/data/examples/Fit/ThursMorn.fit')
+fitfile = FitFile('/data/Fit/ThursMorn.fit')
 
 # See the size of your file
 records = list(fitfile.get_messages('record'))
