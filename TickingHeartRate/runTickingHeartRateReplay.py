@@ -1,18 +1,18 @@
 from deephaven import read_csv
-from deephaven import DynamicTableWriter, Types as dht
-from deephaven import DateTimeUtils
+from deephaven.time import to_datetime, now, plus_period, to_period
+from deephaven import DynamicTableWriter
+import deephaven.Types as dht
 import pathlib
 import time
-import threading
+from threading import Thread
 
 # Max number of csv files to pull in
 csv_files=500
 
 # Setup deephaven tables to hold heart rate results
-column_names = ["Timestamp", "HeartRate"]
-column_types = [dht.datetime, dht.int_]
-hr_table_writer = DynamicTableWriter(column_names, column_types)
-heart_rate_data = hr_table_writer.getTable()
+column = {"Timestamp":dht.DateTime, "HeartRate":dht.int_}
+hr_table_writer = DynamicTableWriter(column)
+heart_rate_data = hr_table_writer.table
 
 # Function to log data to the dynamic table
 def thread_func():
@@ -30,5 +30,5 @@ def thread_func():
             print("File does not exist: " + next_file)
 
 # Thread to log data to the dynamic table
-thread = threading.Thread(target = thread_func)
+thread = Thread(target = thread_func)
 thread.start()
