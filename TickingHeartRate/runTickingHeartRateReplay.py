@@ -21,10 +21,10 @@ def thread_func():
         print(next_file)
         path = pathlib.Path(next_file)
         if path.exists() and path.is_file():
-            next_hr = read_csv(next_file, headless = True).view("Timestamp=Column1", "HeartRate=Column2")
+            next_hr = read_csv(next_file, headless = True).view(["Timestamp=Column1", "HeartRate=Column2"])
             next_record = next_hr.getRecord(0, "Timestamp", "HeartRate")
             timestamp = next_record[0]
-            hr_table_writer.logRow(timestamp, int(next_record[1]))
+            hr_table_writer.write_row(timestamp, int(next_record[1]))
             time.sleep(1)
         else:
             print("File does not exist: " + next_file)
