@@ -1,5 +1,6 @@
-from deephaven import DynamicTableWriter, Types as dht
-from deephaven.DateTimeUtils import convertDateTime
+from deephaven.time import to_datetime
+from deephaven import DynamicTableWriter
+import deephaven.dtypes as 
 # Ensure fitparse is installed.
 import os
 try:
@@ -17,15 +18,13 @@ print("Number of data points: {}".format(len(records)))
 
 # Setup deephaven tables to hold results
 # Heart rate
-column_names = ["Timestamp", "HeartRate"]
-column_types = [dht.datetime, dht.int_]
-hr_table_writer = DynamicTableWriter(column_names, column_types)
-heart_rate_data = hr_table_writer.getTable()
+column = {"Timestamp":dht.DateTime, "HeartRate":dht.int_}
+hr_table_writer = DynamicTableWriter(column)
+heart_rate_data = hr_table_writer.table
 # Gps data
-column_names = ["Timestamp", "EnhancedAltitude", "EnhancedSpeed", "GPSAccuracy", "PositionLat", "PositionLong", "Speed"]
-column_types = [dht.datetime, dht.double, dht.double, dht.int_, dht.int_, dht.int_, dht.double]
-gps_table_writer = DynamicTableWriter(column_names, column_types)
-gps_data = gps_table_writer.getTable()
+column = {"Timestamp":dht.DateTime, "EnhancedAltitude":dht.double, "EnhancedSpeed":dht.double, "GPSAccuracy":dht.int_, "PositionLat":dht.int_, "PositionLong":dht.int_, "Speed":dht.double}
+gps_table_writer = DynamicTableWriter(column)
+gps_data = gps_table_writer.table
 
 # Set timezone based on preferences. Fit data may not include timezone
 timezone = "MT"
@@ -67,12 +66,12 @@ for record in fitfile.get_messages('record'):
         raw_heart_rate = str(items[0]).split()[1]
         final_heart_rate = int(raw_heart_rate)
         raw_time = str(items[1]).split()[1]
-        final_time = convertDateTime(raw_time.replace(" ", "T") + timezone)
-        hr_table_writer.logRow(final_time, final_heart_rate)
+        final_time = to_datetime(raw_time.replace(" ", "T") + timezone)
+        hr_table_writer.write_row(final_time, final_heart_rate)
 
     if (mode == "gps"):
         raw_time = str(items[6])[11:30]
-        final_time = convertDateTime(raw_time.replace(" ", "T") + timezone)
+        final_time = to_datetime(raw_time.replace(" ", "T") + timezone)
 
         final_altitude = float(str(items[0]).split()[1])
         final_enh_speed = float(str(items[1]).split()[1])
@@ -84,4 +83,4 @@ for record in fitfile.get_messages('record'):
         # If preferred, the col type for GPS could be set as String, then further processing done even when value is None
         if raw_gps_acc != "None":
             final_gps_acc = int(str(items[2]).split()[1])
-            gps_table_writer.logRow(final_time, final_altitude, final_enh_speed, final_gps_acc, final_pos_lat, final_pos_long, final_speed)
+            gps_table_writer.write_row(final_time, final_altitude, final_enh_speed, final_gps_acc, final_pos_lat, final_pos_long, final_speed)
