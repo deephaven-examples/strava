@@ -4,7 +4,7 @@ This example is meant to work alongside your Deephaven IDE. Please see our [Quic
 
 Maybe you're training for a race or simply maintaining an exercise routine. Personally, I consistently use my fitness watch to ensure I'm meeting my step goals and to track my progress as I try to shave a few seconds off my mile time. The free [Strava](https://www.strava.com) app beloved by runners and cyclists is another great resource to motivate you in your fitness journey and connect with a community. You can track a variety of exercises and store your results in the app. Did you know you can also download this data as .fit files?
 
-In this blog, we walk you through (pun intended!) downloading your Strava data and importing it into Deephaven Community Core, where you can get an overview of your performance and even use this information to adjust your routine for more health benefits.
+We walk you through (pun intended!) downloading your Strava data and importing it into Deephaven Community Core, where you can get an overview of your performance and even use this information to adjust your routine for more health benefits.
 
 ## Grab your data
 
@@ -25,14 +25,14 @@ First, pull your own data from your [Strava](https://www.strava.com/) account.
 
 @dtcooper wrote a really cool Python script to read the FIT binary file format. To install that script, run this code inside the IDE:
 
-```python test-set=1
+```python
 import os
 os.system("pip install fitparse")
 ```
 
 To read the FIT file into Deephaven, specify the file path, making sure to include any intermediate directory if you have them. Our example file is called `ThursMorn.fit`.
 
-```python test-set=1
+```python
 from fitparse import FitFile
 
 fitfile = FitFile('/data/Fit/ThursMorn.fit')
@@ -41,9 +41,10 @@ fitfile = FitFile('/data/Fit/ThursMorn.fit')
 Like most data work, the hard part is cleaning and formatting the data. At the time of writing, this FIT file worked, but in the event Strava alters the format, I left comments on my debugging so you can see how you might want to change things if and when Strava makes changes. I put the rest of the script below to copy and paste into your IDE.
 
 
-```python test-set=1 order=gps_data,heart_rate_data
-from deephaven import DynamicTableWriter, Types as dht
-from deephaven.DateTimeUtils import convertDateTime
+```python
+from deephaven.time import to_datetime
+from deephaven import DynamicTableWriter
+import deephaven.dtypes as dht 
 # Ensure fitparse is installed.
 import os
 try:
@@ -61,15 +62,14 @@ print("Number of data points: {}".format(len(records)))
 
 # Setup deephaven tables to hold results
 # Heart rate
-column_names = ["Timestamp", "HeartRate"]
-column_types = [dht.datetime, dht.int_]
-hr_table_writer = DynamicTableWriter(column_names, column_types)
-heart_rate_data = hr_table_writer.getTable()
+columns = {"Timestamp":dht.DateTime, "HeartRate":dht.int_}
+
+hr_table_writer = DynamicTableWriter(columns)
+heart_rate_data = hr_table_writer.table
 # Gps data
-column_names = ["Timestamp", "EnhancedAltitude", "EnhancedSpeed", "GPSAccuracy", "PositionLat", "PositionLong", "Speed"]
-column_types = [dht.datetime, dht.double, dht.double, dht.int_, dht.int_, dht.int_, dht.double]
-gps_table_writer = DynamicTableWriter(column_names, column_types)
-gps_data = gps_table_writer.getTable()
+column_gps = {"Timestamp":dht.DateTime, "EnhancedAltitude":dht.double, "EnhancedSpeed":dht.double, "GPSAccuracy":dht.int_, "PositionLat":dht.int_, "PositionLong"dht.int_, "Speed"dht.double}
+gps_table_writer = DynamicTableWriter(column_gps)
+gps_data = gps_table_writer.table
 
 # Set timezone based on preferences. Fit data may not include timezone
 timezone = "MT"
@@ -111,12 +111,12 @@ for record in fitfile.get_messages('record'):
         raw_heart_rate = str(items[0]).split()[1]
         final_heart_rate = int(raw_heart_rate)
         raw_time = str(items[1]).split()[1]
-        final_time = convertDateTime(raw_time.replace(" ", "T") + timezone)
-        hr_table_writer.logRow(final_time, final_heart_rate)
+        final_time = to_datetime(raw_time.replace(" ", "T") + timezone)
+        hr_table_writer.write_data(final_time, final_heart_rate)
 
     if (mode == "gps"):
         raw_time = str(items[6])[11:30]
-        final_time = convertDateTime(raw_time.replace(" ", "T") + timezone)
+        final_time = to_datetime(raw_time.replace(" ", "T") + timezone)
 
         final_altitude = float(str(items[0]).split()[1])
         final_enh_speed = float(str(items[1]).split()[1])
@@ -128,16 +128,16 @@ for record in fitfile.get_messages('record'):
         # If preferred, the col type for GPS could be set as String, then further processing done even when value is None
         if raw_gps_acc != "None":
             final_gps_acc = int(str(items[2]).split()[1])
-            gps_table_writer.logRow(final_time, final_altitude, final_enh_speed, final_gps_acc, final_pos_lat, final_pos_long, final_speed)
+            gps_table_writer.write_data(final_time, final_altitude, final_enh_speed, final_gps_acc, final_pos_lat, final_pos_long, final_speed)
 ```
 
 
 It's useful to sort the data in descending time, like below:
 
 ```python
-gps_data = gps_data.sortDescending("Timestamp")
+gps_data = gps_data.sort_descending(["Timestamp"])
 
-heart_rate_data = heart_rate_data.sortDescending("Timestamp")
+heart_rate_data = heart_rate_data.sort_descending(["Timestamp"])
 ```
 
 ![img](Fit/heartRateTable.png)
@@ -146,25 +146,6 @@ heart_rate_data = heart_rate_data.sortDescending("Timestamp")
 note:
 Your mileage may vary if using a `.fit` file which reports different data types. Different sensors can report different data. In the example here, both GPS and heart rate monitor data is intertwined.
 
-
-## Visualize your data
-
-Now the fun part. Plotting!
-
-Run the script in a Deephaven IDE to produce a chart of heart rate data.
-
-```python skip-test
-from deephaven import Plot
-
-plot_HR = Plot.plot("Heart Rate", heart_rate_data.where("heart_rate>0"), "Timestamp", "heart_rate")\
-    .plotStyle("scatter")\
-    .pointSize(0.5)\
-    .pointColor(Plot.colorRGB(0,0,255,50))\
-    .pointShape("circle")\
-    .show()
-```
-
-![img](Fit/heartRateChart.png)
 
 
 Now that is being a [Strava](https://www.strava.com/) Power User!
