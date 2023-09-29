@@ -1,7 +1,6 @@
-from deephaven.time import to_datetime
+from deephaven.time import to_j_instant
 from deephaven import DynamicTableWriter
-import deephaven.dtypes as 
-# Ensure fitparse is installed.
+from deephaven import dtypes as dht
 import os
 try:
     from fitparse import FitFile
@@ -10,7 +9,7 @@ except ImportError:
     from fitparse import FitFile
 
 # Change to the name of the downloaded file (including any intermediate directory added to docker)
-fitfile = FitFile('/data/examples/Fit/ThursMorn.fit')
+fitfile = FitFile('/data/Fit/ThursMorn.fit')
 
 # See the size of your file
 records = list(fitfile.get_messages('record'))
@@ -18,17 +17,16 @@ print("Number of data points: {}".format(len(records)))
 
 # Setup deephaven tables to hold results
 # Heart rate
-column = {"Timestamp":dht.DateTime, "HeartRate":dht.int_}
+column = {"Timestamp":dht.Instant, "HeartRate":dht.int_}
 hr_table_writer = DynamicTableWriter(column)
 heart_rate_data = hr_table_writer.table
 # Gps data
-column = {"Timestamp":dht.DateTime, "EnhancedAltitude":dht.double, "EnhancedSpeed":dht.double, "GPSAccuracy":dht.int_, "PositionLat":dht.int_, "PositionLong":dht.int_, "Speed":dht.double}
+column = {"Timestamp":dht.Instant, "EnhancedAltitude":dht.double, "EnhancedSpeed":dht.double, "GPSAccuracy":dht.int_, "PositionLat":dht.int_, "PositionLong":dht.int_, "Speed":dht.double}
 gps_table_writer = DynamicTableWriter(column)
 gps_data = gps_table_writer.table
 
 # Set timezone based on preferences. Fit data may not include timezone
-timezone = "MT"
-timezone = " " + timezone # Ensure there is a blank space before timezone for later parsing.
+timezone = " ET"
 
 # Process in smaller batches first, until you are happy with the results you are working with
 counter = 20
@@ -66,12 +64,12 @@ for record in fitfile.get_messages('record'):
         raw_heart_rate = str(items[0]).split()[1]
         final_heart_rate = int(raw_heart_rate)
         raw_time = str(items[1]).split()[1]
-        final_time = to_datetime(raw_time.replace(" ", "T") + timezone)
+        final_time = to_j_instant(raw_time.replace(" ", "T") + timezone)
         hr_table_writer.write_row(final_time, final_heart_rate)
 
     if (mode == "gps"):
         raw_time = str(items[6])[11:30]
-        final_time = to_datetime(raw_time.replace(" ", "T") + timezone)
+        final_time = to_j_instant(raw_time.replace(" ", "T") + timezone)
 
         final_altitude = float(str(items[0]).split()[1])
         final_enh_speed = float(str(items[1]).split()[1])
